@@ -1,0 +1,79 @@
+
+(sdegeo:set-auto-region-naming OFF)
+(sdegeo:set-default-boolean "ABA")
+
+(sdegeo:create-rectangle (position -0.5 0.2 0)  (position 0.5 1 0) "Silicon" "R.Substrate")
+(sdegeo:create-rectangle (position -0.2 -0.004 0)  (position 0.2 0 0) "SiO2" "R.GateOX")
+(sdegeo:create-rectangle (position -0.2 -0.2 0)  (position 0.2 -0.004 0) "Si3N4" "R.NitrideSpacer")
+(sdegeo:create-rectangle (position -0.1 -0.2 0)  (position 0.1 -0.004 0) "PolySi" "R.PolysiliconGate")
+(sdegeo:create-rectangle (position -0.5 0.1 0)  (position 0.5 0.2 0) "SiO2" "R.BuriedOX")
+(sdegeo:create-rectangle (position -0.5 0 0)  (position 0.5 0.1 0) "Silicon" "R.Substrate2")
+
+(sde:define-parameter "fillet-radius" 0.08 0.0 0.0 )
+
+(sdegeo:fillet-2d (list (car (find-vertex-id (position -0.2 -0.2 0)))) 0.08)
+(sdegeo:fillet-2d (list (car (find-vertex-id (position 0.2 -0.2 0)))) 0.08)
+
+(sdegeo:define-contact-set "source" 4  (color:rgb 1 0 0 ) "##")
+(sdegeo:define-contact-set "drain" 4  (color:rgb 0 1 0 ) "##")
+(sdegeo:define-contact-set "gate" 4  (color:rgb 0 0 1 ) "##")
+(sdegeo:define-contact-set "substrate" 4  (color:rgb 1 1 0 ) "##")
+(sdegeo:define-contact-set "bodytie" 4  (color:rgb 0 1 1 ) "##")
+
+(sdegeo:set-current-contact-set "source")
+(sdegeo:set-contact (list (car (find-edge-id (position -0.35 0 0)))) "source")
+(sdegeo:set-current-contact-set "drain")
+(sdegeo:set-contact (list (car (find-edge-id (position 0.35 0 0)))) "drain")
+(sdegeo:set-current-contact-set "substrate")
+(sdegeo:set-contact (list (car (find-edge-id (position 0.0 1 0)))) "substrate")
+
+(sdegeo:insert-vertex (position -0.1 0.1 0))
+(sdegeo:insert-vertex (position -0.05 0.1 0))
+(sdegeo:set-current-contact-set "bodytie")
+(sdegeo:set-contact (list (car (find-edge-id (position -0.075 0.1 0)))) "bodytie")
+(sdegeo:set-current-contact-set "gate")
+(sdegeo:set-contact (list (car (find-body-id (position 0 -0.102 0)))) "gate")
+
+(sdegeo:delete-region (list (car (find-body-id (position 0 -0.102 0)))))
+
+(sdedr:define-constant-profile "Const.Silicon" "BoronActiveConcentration" 1e+15)
+(sdedr:define-constant-profile-material "PlaceCD.Silicon" "Const.Silicon" "Silicon")
+
+(sdedr:define-constant-profile "Const.Epi" "BoronActiveConcentration" 1e+17)
+(sdedr:define-constant-profile-region "PlaceCD.Epi" "Const.Epi" "R.Substrate2")
+
+(sdedr:define-refeval-window "BaseLine.Source" "Line"  (position -0.8 0 0) (position -0.2 0 0))
+(sdedr:define-refeval-window "BaseLine.Drain" "Line"  (position 0.2 0 0) (position 0.8 0 0))
+(sdedr:define-refeval-window "BaseLine.SourceExt" "Line"  (position -0.8 0 0) (position -0.1 0 0))
+(sdedr:define-refeval-window "BaseLine.DrainExt" "Line"  (position 0.1 0 0) (position 0.8 0 0))
+
+(sdedr:define-analytical-profile-placement "PlaceAP.Source" "Gauss.SourceDrain" "BaseLine.Source" "Positive" "NoReplace" "Eval")
+(sdedr:define-gaussian-profile "Gauss.SourceDrain" "ArsenicActiveConcentration" "PeakPos" 0  "PeakVal" 5e+19 "ValueAtDepth" 1e+17 "Depth" 0.12 "Gauss"  "Factor" 0.8)
+(sdedr:define-analytical-profile-placement "PlaceAP.Drain" "Gauss.SourceDrain" "BaseLine.Drain" "Positive" "NoReplace" "Eval")
+(sdedr:define-gaussian-profile "Gauss.SourceDrain" "ArsenicActiveConcentration" "PeakPos" 0  "PeakVal" 5e+19 "ValueAtDepth" 1e+17 "Depth" 0.12 "Gauss"  "Factor" 0.8)
+(sdedr:define-analytical-profile-placement "PlaceAP.SourceExt" "Gauss.SourceDrainExt" "BaseLine.SourceExt" "Positive" "NoReplace" "Eval")
+(sdedr:define-gaussian-profile "Gauss.SourceDrainExt" "ArsenicActiveConcentration" "PeakPos" 0  "PeakVal" 5e+18 "ValueAtDepth" 1e+18 "Depth" 0.035 "Gauss"  "Factor" 0.8)
+(sdedr:define-analytical-profile-placement "PlaceAP.DrainExt" "Gauss.SourceDrainExt" "BaseLine.DrainExt" "Positive" "NoReplace" "Eval")
+(sdedr:define-gaussian-profile "Gauss.SourceDrainExt" "ArsenicActiveConcentration" "PeakPos" 0  "PeakVal" 5e+19 "ValueAtDepth" 1e+18 "Depth" 0.035 "Gauss"  "Factor" 0.8)
+
+(sdedr:define-refeval-window "RefWin.all" "Rectangle"  (position -1 -0.5 0) (position 1 1.5 0))
+
+(sdedr:define-refinement-size "RefDef.all" 0.25 0.1 0.25 0.1 )
+(sdedr:define-refinement-placement "PlaceRF.all" "RefDef.all" (list "window" "RefWin.all" ) )
+(sdedr:define-refinement-function "RefDef.all" "DopingConcentration" "MaxTransDiff" 1)
+(sdedr:define-refinement-function "RefDef.all" "MaxLenInt" "Silicon" "SiO2" 0.001 1.5 "DoubleSide")
+
+(sdedr:define-refinement-size "RefDef.Epi" 0.1 0.0125 0.0025 0.0025 )
+(sdedr:define-refinement-placement "PlaceRF.Epi" "RefDef.Epi" (list "region" "R.Substrate2" ) )
+(sdedr:define-refinement-function "RefDef.Epi" "DopingConcentration" "MaxTransDiff" 1)
+(sdedr:define-refinement-function "RefDef.Epi" "MaxLenInt" "R.Substrate2" "R.GateOX" 0.0002 1.5 "DoubleSide" "UseRegionNames")
+
+(sdedr:define-refeval-window "RefWin.channel" "Rectangle"  (position -0.1 0 0.0)  (position 0.1 0.1 0.0) )
+(sdedr:define-refinement-size "RefDef.channel" 0.25 0.1 0.025 0.01 )
+(sdedr:define-refinement-placement "PlaceRF.channel" "RefDef.channel" (list "window" "RefWin.channel" ) )
+(sdedr:define-refinement-function "RefDef.channel" "DopingConcentration" "MaxTransDiff" 1)
+(sdedr:define-refinement-function "RefDef.channel" "MaxLenInt" "Silicon" "SiO2" 0.001 1.5 "DoubleSide")
+
+(sde:set-meshing-command "snmesh")
+(sde:build-mesh "" "soifet")
+(system:command "svisual soifet_msh.tdr &")
